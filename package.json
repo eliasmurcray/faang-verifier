@@ -1,0 +1,11 @@
+{
+  "name": "faang-verifier",
+  "version": "1.0.0",
+  "description": "Email verification for FAANG employees.",
+  "main": "app.js",
+  "author": "Elias Murcray",
+  "license": "MIT",
+  "devDependencies": {
+    "discord.js": "^14.15.3"
+  }
+}
