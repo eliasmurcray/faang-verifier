@@ -5,8 +5,11 @@
   "main": "app.js",
   "author": "Elias Murcray",
   "license": "MIT",
-  "devDependencies": {
+  "devDependencies": {},
+  "dependencies": {
+    "@types/sqlite3": "^3.1.11",
     "discord.js": "^14.15.3",
+    "nodemailer": "^6.9.14",
     "sqlite3": "^5.1.7"
   }
 }

@@ -1,6 +1,9 @@
 # Database
 *.db
 
+# Generated files
+app.js
+
 # Mac
 .DS_Store
 

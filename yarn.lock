@@ -112,11 +112,18 @@
   integrity sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw==
 
 "@types/node@*":
-  version "22.4.1"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.4.1.tgz#9b595d292c65b94c20923159e2ce947731b6fdce"
-  integrity sha512-1tbpb9325+gPnKK0dMm+/LMriX0vKxf6RnB0SZUqfyVkQ4fMgUSySqhxE/y8Jvs4NyF1yHzTfG9KlnkIODxPKg==
+  version "22.4.2"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.4.2.tgz#55fefb1c3dba2ecd7eb76738c6b80da75760523f"
+  integrity sha512-nAvM3Ey230/XzxtyDcJ+VjvlzpzoHwLsF7JaDRfoI0ytO0mVheerNmM45CtA0yOILXwXXxOrcUWH3wltX+7PSw==
   dependencies:
     undici-types "~6.19.2"
+
+"@types/sqlite3@^3.1.11":
+  version "3.1.11"
+  resolved "https://registry.yarnpkg.com/@types/sqlite3/-/sqlite3-3.1.11.tgz#845044b81585f1fcc143ee8d963ca5da63d0e768"
+  integrity sha512-KYF+QgxAnnAh7DWPdNDroxkDI3/MspH1NMx6m/N/6fT1G6+jvsw4/ZePt8R8cr7ta58aboeTfYFBDxTJ5yv15w==
+  dependencies:
+    "@types/node" "*"
 
 "@types/ws@^8.5.10":
   version "8.5.12"
@@ -678,9 +685,9 @@ negotiator@^0.6.2:
   integrity sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==
 
 node-abi@^3.3.0:
-  version "3.66.0"
-  resolved "https://registry.yarnpkg.com/node-abi/-/node-abi-3.66.0.tgz#bf1101543af24abd9dce47b13047ee49b1358ca0"
-  integrity sha512-J3ygyG8cTcn5TVzpHYEBE6zHN4uVoj6wKMS946b19VYGhVpGgR5mB3OK2oBTe0l3Bpsj5/h+TAblq0K8Ec9cRQ==
+  version "3.67.0"
+  resolved "https://registry.yarnpkg.com/node-abi/-/node-abi-3.67.0.tgz#1d159907f18d18e18809dbbb5df47ed2426a08df"
+  integrity sha512-bLn/fU/ALVBE9wj+p4Y21ZJWYFjUXLXPi/IewyLZkx3ApxKDNBWCKdReeKOtD8dWpOdDCeMyLh6ZewzcLsG2Nw==
   dependencies:
     semver "^7.3.5"
 
@@ -704,6 +711,11 @@ node-gyp@8.x:
     semver "^7.3.5"
     tar "^6.1.2"
     which "^2.0.2"
+
+nodemailer@^6.9.14:
+  version "6.9.14"
+  resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-6.9.14.tgz#845fda981f9fd5ac264f4446af908a7c78027f75"
+  integrity sha512-Dobp/ebDKBvz91sbtRKhcznLThrKxKt97GI2FAlAyy+fk19j73Uz3sBXolVtmcXjaorivqsbbbjDY+Jkt4/bQA==
 
 nopt@^5.0.0:
   version "5.0.0"
