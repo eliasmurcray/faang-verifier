@@ -151,7 +151,7 @@ async function main() {
         const emailParts = args[1].split('@');
         if (emailParts.length != 2 || !emailParts[0] || !emailParts[1]) return;
         const domain = emailParts[1].toLowerCase();
-        if (!faang.includes(domain) && 0) {
+        if (!faang.includes(domain)) {
           message.reply(`Domain name '${domain}' not in whitelist.`);
           return;
         }
