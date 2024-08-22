@@ -1,5 +1,4 @@
 import { getRandomValues } from 'node:crypto';
-/*const crypto = require('node:crypto');*/
 
 export function formatTimestamp(timestamp: number): string {
   const pad = (v: string): string => `0${v}`.slice(-2);
