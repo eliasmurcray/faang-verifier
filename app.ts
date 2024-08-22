@@ -10,11 +10,11 @@ if (process.argv.length != 4) {
 }
 
 type User = {
-  id?: string;
-  email?: string;
-  status?: number;
-  code?: string;
-  created_at?: string;
+  id: string;
+  email: string;
+  status: number;
+  code: string;
+  created_at: string;
 };
 
 enum UserStatus {
@@ -23,9 +23,22 @@ enum UserStatus {
   BANNED = 2,
 };
 
-const getUser = async (db: sqlite3.Database, id: string): Promise<User | null> => {
+const getUserById = async (db: sqlite3.Database, id: string): Promise<User | null> => {
   return new Promise((resolve) => {
     db.get('SELECT * from users WHERE id = ?1', [id], (err: Error | null, row: User | null) => {
+      if (err) {
+        console.error(err);
+        resolve(null);
+        return;
+      }
+      resolve(row);
+    });
+  });
+};
+
+const getUserByEmail = async (db: sqlite3.Database, email: string): Promise<User | null> => {
+  return new Promise((resolve) => {
+    db.get('SELECT * from users WHERE email = ?1', [email], (err: Error | null, row: User | null) => {
       if (err) {
         console.error(err);
         resolve(null);
@@ -46,38 +59,45 @@ CREATE TABLE IF NOT EXISTS users (
   code TEXT NOT NULL,
   created_at TEXT NOT NULL
 )`;
-const addUser = `
+const upsertUser = `
 INSERT INTO  users (id, email, status, code, created_at)
-  VALUES(?1, ?2, 0, ?3, ?4)
+  VALUES(?1, ?2, ?3, ?4, ?5)
   ON CONFLICT(id) DO UPDATE SET
     email=excluded.email,
     status=excluded.status,
     code=excluded.code,
     created_at=excluded.created_at
-  WHERE excluded.created_at > users.created_at`;
+  WHERE TRUE`;
+
+const welcomeMessage = `Congratulations! 🎉
+
+You've been successfully verified. You now have access to all the features and channels available to verified users.
+
+If you need any help or have questions, feel free to ask in the support channels or contact a staff member.
+
+Welcome to the community!`;
 
 main();
 
 async function main() {
+  console.log('Initializing database...');
   closeSync(openSync(dbFilename, 'a'));
   const db = await new sqlite3.Database(dbFilename, sqlite3.OPEN_READWRITE, (err: Error | null) => {
     if (err) {
-      console.error(err);
+      console.error('Error creating database: ' + err);
       process.exit(1);
     }
   });
-  console.log(`Database successfully initialized at ${dbFilename}`);
-  console.log('Creating \'users\' table...');
   await new Promise<void>((resolve) => {
     db.run(createUsersTable, [], (err: Error | null) => {
       if (err) {
-        console.error(err);
+        console.error('Error creating users table: ' + err);
         process.exit(1);
       }
       resolve();
     });
   });
-  console.log('Table \'users\' created successfully');
+  console.log(`Database successfully initialized at ${dbFilename}`);
 
   const transporter = createTransport({
     host: 'smtp.gmail.com',
@@ -89,6 +109,7 @@ async function main() {
     },
   });
 
+  console.log('Initializing Discord client...');
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel],
@@ -104,8 +125,14 @@ async function main() {
 
   client.on(Events.MessageCreate, async (message) => {
     if (!message.channel.isDMBased() || message.author.bot) return;
-    const user = await getUser(db, message.author.id);
-    if (user && user.status === UserStatus.BANNED) return;
+    const userFromId = await getUserById(db, message.author.id);
+    if (userFromId) {
+      if (userFromId.status === UserStatus.BANNED) return;
+      if (userFromId.status === UserStatus.VERIFIED) {
+        message.reply('You are already verified.');
+        return;
+      }
+    }
     const formattedTimestamp = formatTimestamp(+message.createdTimestamp);
     console.log(`\x1b[33m<Message>\x1b[0m [${formattedTimestamp}] ${message.author.username} (${message.author.id}): ${message.content}`);
     const args = message.content.split(' ');
@@ -127,7 +154,25 @@ async function main() {
         const email = args[1];
         const code = generateVerificationCode();
         const createdAt = Date.now().toString();
-        db.run(addUser, [id, email, code, createdAt], (err: Error | null) => {
+        
+        if (userFromId) {
+          if (userFromId.status === UserStatus.UNVERIFIED) {
+            const diff = Date.now() - Number(userFromId.created_at);
+            if (diff < 1000 * 60 * 10) {
+              const minutes = diff / (60 * 1000);
+              message.reply(`You must wait 10 minutes between verification requests. ${minutes > 9 ? 'Less than 1 minute' : Math.ceil(10 - minutes) + ' minutes'} remaining.`);
+              return;
+            }
+          }
+        }
+
+        const userFromEmail = await getUserByEmail(db, email);
+        if (userFromEmail && userFromEmail.status !== UserStatus.UNVERIFIED) {
+          message.reply('Email already in use. If this is a mistake, please contact a Staff member.');
+          return;
+        }
+
+        db.run(upsertUser, [id, email, UserStatus.UNVERIFIED, code, createdAt], (err: Error | null) => {
           if (err) {
             message.reply('Internal server error (0)');
             console.error(`Error inserting user '${id}': ${err}`);
@@ -146,7 +191,22 @@ async function main() {
         });
         break;
       case 'submit':
-        
+        if (!userFromId) {
+          message.reply('User not found. Run `verify <your faang email>` to begin the verification process.');
+          return;
+        }
+        if (args[1] != userFromId.code) {
+          message.reply('Invalid code, please try again.');
+          return;
+        }
+        db.run('UPDATE users SET status = ?1 WHERE id = ?2', [UserStatus.VERIFIED, message.author.id], (err: Error | null) => {
+          if (err) {
+            message.reply('Internal server error(2)');
+            console.error(`Error updating user status ${id} (status=VERIFIED): ${err}`);
+            return;
+          }
+          message.reply(welcomeMessage);
+        });
         break;
       default:
         message.reply('Run `verify <your faang email>` to begin the verification process.');
