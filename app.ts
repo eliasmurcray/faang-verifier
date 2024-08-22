@@ -1,13 +1,19 @@
-import { Client, GatewayIntentBits, Partials, Events } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, Partials, Events, REST, Routes, ChatInputCommandInteraction, SlashCommandBuilder, RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
 import * as sqlite3 from 'sqlite3';
 import { createTransport } from 'nodemailer';
 import { formatTimestamp, generateVerificationCode } from './utils';
-import { closeSync, openSync } from 'node:fs';
+import { closeSync, openSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 if (process.argv.length != 4) {
   console.error('Usage: %s %s <bot token> <gmail password>', process.argv[0], process.argv[1]);
   process.exit(1);
 }
+
+type Command = {
+  execute: (arg0: ChatInputCommandInteraction, arg1: sqlite3.Database) => Promise<void>;
+  data: SlashCommandBuilder;
+};
 
 type User = {
   id: string;
@@ -109,7 +115,6 @@ async function main() {
     },
   });
 
-  console.log('Initializing Discord client...');
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel],
@@ -122,7 +127,8 @@ async function main() {
     }
     console.log(`Logged in as ${client.user.tag}`);
   });
-
+  
+  // DM-based email authentication
   client.on(Events.MessageCreate, async (message) => {
     if (!message.channel.isDMBased() || message.author.bot) return;
     const userFromId = await getUserById(db, message.author.id);
@@ -213,5 +219,55 @@ async function main() {
     }
   });
 
-  client.login(process.argv[2]);
+  // Commands
+  const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
+  const collection = new Collection<string, Command>();
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+    const command = collection.get(interaction.commandName);
+    if (!command) return;
+    command.execute(interaction, db)
+      .catch((error: Error) => {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+          interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+        } else {
+          interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
+      });
+  });
+
+  if (!existsSync(join(__dirname, 'commands'))) {
+    console.log('Initializing Discord client...'); 
+    client.login(process.argv[2]);
+    return;
+  }
+  const commandFiles = readdirSync(join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
+  if (commandFiles.length === 0) {
+    console.log('Initializing Discord client...'); 
+    client.login(process.argv[2]);
+    return;
+  }
+  for (const file of commandFiles) {
+    const command = await import(join(__dirname, 'commands', file));
+    if ('data' in command && 'execute' in command) {
+      commands.push(command.data.toJSON());
+      collection.set(command.data.name, command);
+      continue;
+    }
+    console.error(`The command at ${file} is missing a required "data" or "execute" property.`);
+    process.exit(1);
+  }
+  if (process.argv[2] === undefined) return;
+  const rest = new REST().setToken(process.argv[2]);
+  console.log('Started refreshing application (/) commands.');
+  rest.put(Routes.applicationCommands('1275322250333130803'), {
+    body: commands,
+  }).then(() => {
+    console.log('Successfully reloaded application (/) commands.\nInitializing Discord client...');
+    client.login(process.argv[2]);
+  }).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

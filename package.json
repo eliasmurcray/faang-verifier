@@ -2,7 +2,7 @@
   "name": "faang-verifier",
   "version": "1.0.0",
   "description": "Email verification for FAANG employees.",
-  "main": "dist/app.js",
+  "main": "app.js",
   "author": "Elias Murcray",
   "license": "MIT",
   "dependencies": {
