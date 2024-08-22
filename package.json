@@ -2,11 +2,12 @@
   "name": "faang-verifier",
   "version": "1.0.0",
   "description": "Email verification for FAANG employees.",
-  "main": "app.js",
+  "main": "dist/app.js",
   "author": "Elias Murcray",
   "license": "MIT",
   "devDependencies": {},
   "dependencies": {
+    "@types/nodemailer": "^6.4.15",
     "@types/sqlite3": "^3.1.11",
     "discord.js": "^14.15.3",
     "nodemailer": "^6.9.14",

@@ -2,7 +2,7 @@
 *.db
 
 # Generated files
-app.js
+dist/*
 
 # Mac
 .DS_Store

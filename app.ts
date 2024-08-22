@@ -1,8 +1,8 @@
-const { Client, GatewayIntentBits, Partials, Events, Message } = require('discord.js');
-const sqlite3 = require('sqlite3').verbose();
-const nodemailer = require('nodemailer');
-const { formatTimestamp, generateVerificationCode } = require('./utils.js');
-const fs = require('node:fs');
+import { Client, GatewayIntentBits, Partials, Events } from 'discord.js';
+import * as sqlite3 from 'sqlite3';
+import { createTransport } from 'nodemailer';
+import { formatTimestamp, generateVerificationCode } from './utils';
+import { closeSync, openSync } from 'node:fs';
 
 if (process.argv.length != 4) {
   console.error('Usage: %s %s <bot token> <gmail password>', process.argv[0], process.argv[1]);
@@ -23,7 +23,7 @@ enum UserStatus {
   BANNED = 2,
 };
 
-const getUser = async (db: typeof sqlite3.Database, id: string): Promise<User | null> => {
+const getUser = async (db: sqlite3.Database, id: string): Promise<User | null> => {
   return new Promise((resolve) => {
     db.get('SELECT * from users WHERE id = ?1', [id], (err: Error | null, row: User | null) => {
       if (err) {
@@ -59,7 +59,7 @@ INSERT INTO  users (id, email, status, code, created_at)
 main();
 
 async function main() {
-  fs.closeSync(fs.openSync(dbFilename, 'a'));
+  closeSync(openSync(dbFilename, 'a'));
   const db = await new sqlite3.Database(dbFilename, sqlite3.OPEN_READWRITE, (err: Error | null) => {
     if (err) {
       console.error(err);
@@ -79,7 +79,7 @@ async function main() {
   });
   console.log('Table \'users\' created successfully');
 
-  const transporter = nodemailer.createTransport({
+  const transporter = createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
@@ -95,24 +95,28 @@ async function main() {
   });
 
   client.on(Events.ClientReady, () => {
+    if (client.user === null) {
+      console.error('Client failed to initialize, user is null');
+      process.exit(1);
+    }
     console.log(`Logged in as ${client.user.tag}`);
   });
 
-  client.on(Events.MessageCreate, async (message: typeof Message) => {
+  client.on(Events.MessageCreate, async (message) => {
     if (!message.channel.isDMBased() || message.author.bot) return;
     const user = await getUser(db, message.author.id);
     if (user && user.status === UserStatus.BANNED) return;
-    const formattedTimestamp = formatTimestamp(message.createdTimestamp);
+    const formattedTimestamp = formatTimestamp(+message.createdTimestamp);
     console.log(`\x1b[33m<Message>\x1b[0m [${formattedTimestamp}] ${message.author.username} (${message.author.id}): ${message.content}`);
     const args = message.content.split(' ');
-    if (args.length != 2) {
+    if (args.length != 2 || !args[0] || !args[1]) {
       message.reply('Run `verify <your faang email>` to begin the verification process.');
       return;
     }
     switch(args[0]) {
       case 'verify':
         const emailParts = args[1].split('@');
-        if (emailParts.length != 2) return
+        if (emailParts.length != 2 || !emailParts[0] || !emailParts[1]) return;
         const domain = emailParts[1].toLowerCase();
         if (!faang.includes(domain) && 0) {
           message.reply(`Domain name '${domain}' not in whitelist.`);
