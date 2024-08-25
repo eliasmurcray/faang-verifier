@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionsBitField, GuildMember } from 'discord.js';
 import * as sqlite3 from 'sqlite3';
 
 type User = {
@@ -32,6 +32,11 @@ export const data = new SlashCommandBuilder()
       .setRequired(true));
 
 export const execute = async(interaction: ChatInputCommandInteraction, db: sqlite3.Database) => {
+  const member = interaction.member as GuildMember;
+  if (member === null || !member.permissions.has([PermissionsBitField.Flags.Administrator])) {
+    interaction.reply('You do not have the required permissions to use this command.');
+    return;
+  }
   const uid = interaction.options.getString('uid', true);
   const user = await getUserById(db, uid);
   if (user) {
