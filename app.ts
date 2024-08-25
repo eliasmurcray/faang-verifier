@@ -1,4 +1,4 @@
-import { Client, Collection, GatewayIntentBits, Partials, Events, REST, Routes, ChatInputCommandInteraction, SlashCommandBuilder, RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
+import { Client, Guild, Role, Collection, GatewayIntentBits, Partials, Events, REST, Routes, ChatInputCommandInteraction, SlashCommandBuilder, RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
 import * as sqlite3 from 'sqlite3';
 import { createTransport } from 'nodemailer';
 import { formatTimestamp, generateVerificationCode } from './utils';
@@ -83,6 +83,9 @@ If you need any help or have questions, feel free to ask in the support channels
 
 Welcome to the community!`;
 
+const guildId = "1275314029962858517";
+const verifiedRoleId = "1277142077230157874";
+
 main();
 
 async function main() {
@@ -116,15 +119,29 @@ async function main() {
   });
 
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel],
   });
-
-  client.on(Events.ClientReady, () => {
+  
+  let cachedGuild: Guild;
+  let verifiedRole: Role;
+  client.on(Events.ClientReady, async () => {
     if (client.user === null) {
       console.error('Client failed to initialize, user is null');
       process.exit(1);
     }
+    cachedGuild = await client.guilds.fetch(guildId);
+    if (!cachedGuild) {
+      console.error(`Failed to fetch guild with ID ${guildId}`);
+      process.exit(1);
+    }
+    const role = cachedGuild.roles.cache.find(r => r.id === verifiedRoleId);
+    if (!role) {
+      console.error(`Role not found: ${verifiedRoleId}`);
+      process.exit(1);
+    }
+    verifiedRole = role;
+
     console.log(`Logged in as ${client.user.tag}`);
   });
   
@@ -205,13 +222,35 @@ async function main() {
           message.reply('Invalid code, please try again.');
           return;
         }
-        db.run('UPDATE users SET status = ?1 WHERE id = ?2', [UserStatus.VERIFIED, message.author.id], (err: Error | null) => {
+        db.run('UPDATE users SET status = ?1 WHERE id = ?2', [UserStatus.VERIFIED, message.author.id], async (err: Error | null) => {
           if (err) {
             message.reply('Internal server error(2)');
             console.error(`Error updating user status ${id} (status=VERIFIED): ${err}`);
             return;
           }
-          message.reply(welcomeMessage);
+          try {
+            const member = await cachedGuild.members.fetch(message.author.id);
+            if (!member) {
+              message.reply(`User not found: ${message.author.id}`);
+              return;
+            }
+            await member.roles.add(verifiedRole);
+            message.reply(welcomeMessage);
+            console.log(`Role ${verifiedRole.name} added to <@${member.id}>.`);
+          } catch (error: any) {
+            console.error('Error adding role:', error);
+            if (error.code === 50013) {
+              message.reply('I do not have permission to manage roles.');
+            } else if (error.code === 10011) {
+              message.reply('The specified role does not exist.');
+            } else if (error.code === 10007) {
+              message.reply('The specified user is not a member of the guild.');
+            } else if (error.code === 10003) {
+              message.reply('The specified guild does not exist.');
+            } else {
+              message.reply('An unexpected error occurred while trying to add the role.');
+            }
+          }
         });
         break;
       default:

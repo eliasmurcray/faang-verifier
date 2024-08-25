@@ -14,6 +14,7 @@
     "lib": ["es2020"],
     "module": "commonjs",
     "target": "es2020",
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "skipLibCheck": true
   }
 }
